@@ -14,7 +14,8 @@
         /// This method will be the final one to be called before the pipeline starts to traverse back up the "stack".
         /// </summary>
         /// <param name="context">The current context.</param>
-        protected abstract Task Terminate(T context);
+        /// <param name="token">A <see cref="CancellationToken"/> to observe while terminating.</param>
+        protected abstract Task Terminate(T context, CancellationToken token);
 
         /// <summary>
         /// Invokes the terminate method.
@@ -26,7 +27,7 @@
         {
             Guard.AgainstNull(nameof(next), next);
 
-            return Terminate(context);
+            return Terminate(context, token);
         }
 
         /// <summary>

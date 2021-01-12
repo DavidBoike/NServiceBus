@@ -2,6 +2,7 @@
 {
     using System;
     using System.Collections.Generic;
+    using System.Threading;
     using System.Threading.Tasks;
     using Microsoft.Extensions.DependencyInjection;
     using NUnit.Framework;
@@ -173,7 +174,7 @@
             var context = new TestableIncomingPhysicalMessageContext();
             context.Services = services;
 
-            return runner.Invoke(context, ctx =>
+            return runner.Invoke(context, (c, t) =>
             {
                 if (toThrow != null)
                 {
@@ -181,7 +182,7 @@
                 }
 
                 return Task.CompletedTask;
-            });
+            }, CancellationToken.None);
         }
 
         class UnitOfWorkThatThrowsFromEnd : IManageUnitsOfWork
