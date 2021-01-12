@@ -5,25 +5,26 @@
     using System.Linq;
     using System.Linq.Expressions;
     using System.Reflection;
+    using System.Threading;
     using System.Threading.Tasks;
-    using FastExpressionCompiler;
     using Pipeline;
+    using static System.Linq.Expressions.Expression;
 
     static class PipelineExecutionExtensions
     {
-        public static Func<TRootContext, Task> CreatePipelineExecutionFuncFor<TRootContext>(this IBehavior[] behaviors)
+        public static Func<TRootContext, CancellationToken, Task> CreatePipelineExecutionFuncFor<TRootContext>(this IBehavior[] behaviors)
             where TRootContext : IBehaviorContext
         {
-            return (Func<TRootContext, Task>)behaviors.CreatePipelineExecutionExpression();
+            return (Func<TRootContext, CancellationToken, Task>)behaviors.CreatePipelineExecutionExpression();
         }
 
         /// <code>
-        /// rootContext
+        /// (rootContext, rootToken)
         ///    => behavior1.Invoke(rootContext,
-        ///       context1 => behavior2.Invoke(context1,
-        ///        ...
-        ///          context{N} => behavior{N}.Invoke(context{N},
-        ///             context{N+1} => TaskEx.Completed))
+        ///       (context1, token1) => behavior2.Invoke(context1,
+        ///        ..., token1
+        ///          (context{N}, token{N}) => behavior{N}.Invoke(context{N},
+        ///             (context{N+1}, token{N+1}) => TaskEx.Completed), token{N})
         /// </code>
         public static Delegate CreatePipelineExecutionExpression(this IBehavior[] behaviors, List<Expression> expressions = null)
         {
@@ -48,31 +49,32 @@
                 var genericArguments = behaviorInterfaceType.GetGenericArguments();
                 var inContextType = genericArguments[0];
 
-                var inContextParameter = ExpressionInfo.Parameter(inContextType, $"context{i}");
+                var inContextParameter = Parameter(inContextType, $"context{i}");
+                var cancellationTokenParameter = Parameter(typeof(CancellationToken), $"token{i}");
 
                 if (i == behaviorCount)
                 {
-                    var outContextType = genericArguments[1];
-                    var doneDelegate = CreateDoneDelegate(outContextType, i);
-                    lambdaExpression = CreateBehaviorCallDelegate(currentBehavior, methodInfo, inContextParameter, doneDelegate, expressions);
+                    inContextType = genericArguments[1];
+                    var doneDelegate = CreateDoneDelegate(inContextType, i);
+                    lambdaExpression = CreateBehaviorCallDelegate(currentBehavior, methodInfo, inContextParameter, doneDelegate, cancellationTokenParameter, expressions);
                     continue;
                 }
 
-                lambdaExpression = CreateBehaviorCallDelegate(currentBehavior, methodInfo, inContextParameter, lambdaExpression, expressions);
+                lambdaExpression = CreateBehaviorCallDelegate(currentBehavior, methodInfo, inContextParameter, lambdaExpression, cancellationTokenParameter, expressions);
             }
 
             return lambdaExpression;
         }
 
         /// <code>
-        /// context{i} => behavior.Invoke(context{i}, context{i+1} => previous)
-        /// </code>>
-        static Delegate CreateBehaviorCallDelegate(IBehavior currentBehavior, MethodInfo methodInfo, ParameterExpression outerContextParam, Delegate previous, List<Expression> expressions = null)
+        /// (context{i}, token{i}) => behavior.Invoke(context{i}, (context{i+1}, token{i+1}) => previous, token{i})
+        /// </code>
+        static Delegate CreateBehaviorCallDelegate(IBehavior currentBehavior, MethodInfo methodInfo, ParameterExpression outerContextParam, Delegate previous, ParameterExpression cancellationTokenParameter, List<Expression> expressions = null)
         {
-            var body = ExpressionInfo.Call(ExpressionInfo.Constant(currentBehavior), methodInfo, outerContextParam, ExpressionInfo.Constant(previous));
-            var lambdaExpression = ExpressionInfo.Lambda(body, outerContextParam);
-            expressions?.Add(lambdaExpression.ToExpression());
-            return lambdaExpression.CompileFast();
+            var body = Call(Constant(currentBehavior), methodInfo, outerContextParam, Constant(previous), cancellationTokenParameter);
+            var lambdaExpression = Lambda(body, outerContextParam, cancellationTokenParameter);
+            expressions?.Add(lambdaExpression);
+            return lambdaExpression.Compile();
         }
 
         /// <code>
@@ -80,8 +82,10 @@
         /// </code>>
         static Delegate CreateDoneDelegate(Type inContextType, int i)
         {
-            var innerContextParam = ExpressionInfo.Parameter(inContextType, $"context{i + 1}");
-            return ExpressionInfo.Lambda(ExpressionInfo.Constant(Task.CompletedTask), innerContextParam).CompileFast();
+            var innerContextParam = Parameter(inContextType, $"context{i + 1}");
+            var cancellationTokenParam = Parameter(typeof(CancellationToken), $"token{i + 1}");
+            var lambdaType = typeof(Func<,,>).MakeGenericType(inContextType, typeof(CancellationToken), typeof(Task));
+            return Lambda(lambdaType, Constant(Task.CompletedTask), innerContextParam, cancellationTokenParam).Compile();
         }
     }
 }
