@@ -36,9 +36,55 @@
             var context = new TestableTransportReceiveContext();
             context.Extensions.Set<IPipelineCache>(new FakePipelineCache());
 
-            await pipeline.Invoke(context);
+            await pipeline.Invoke(context, new CancellationToken(false));
 
             Approver.Verify(stringWriter.ToString());
+        }
+
+        [Test]
+        public void ShouldPassToken()
+        {
+            var stringWriter = new StringWriter();
+
+            var pipelineModifications = new PipelineModifications();
+            pipelineModifications.Additions.Add(new Behavior1.Registration(stringWriter));
+            pipelineModifications.Additions.Add(new Stage1.Registration(stringWriter));
+            pipelineModifications.Additions.Add(new Behavior2.Registration(stringWriter));
+            pipelineModifications.Additions.Add(new StageFork.Registration(stringWriter));
+            pipelineModifications.Additions.Add(new Stage2.Registration(stringWriter));
+            pipelineModifications.Additions.Add(new Terminator.Registration(stringWriter));
+
+            var pipeline = new Pipeline<ITransportReceiveContext>(new ServiceCollection().BuildServiceProvider(), pipelineModifications);
+
+            var context = new TestableTransportReceiveContext();
+            context.Extensions.Set<IPipelineCache>(new FakePipelineCache());
+
+            Assert.ThrowsAsync<OperationCanceledException>(async () =>
+                await pipeline.Invoke(context, new CancellationToken(true)));
+        }
+
+        [Test]
+        public void ShouldNotCacheTokenBetweenInvocations()
+        {
+            var stringWriter = new StringWriter();
+
+            var pipelineModifications = new PipelineModifications();
+            pipelineModifications.Additions.Add(new Behavior1.Registration(stringWriter));
+            pipelineModifications.Additions.Add(new Stage1.Registration(stringWriter));
+            pipelineModifications.Additions.Add(new Behavior2.Registration(stringWriter));
+            pipelineModifications.Additions.Add(new StageFork.Registration(stringWriter));
+            pipelineModifications.Additions.Add(new Stage2.Registration(stringWriter));
+            pipelineModifications.Additions.Add(new Terminator.Registration(stringWriter));
+
+            var pipeline = new Pipeline<ITransportReceiveContext>(new ServiceCollection().BuildServiceProvider(), pipelineModifications);
+
+            var context = new TestableTransportReceiveContext();
+            context.Extensions.Set<IPipelineCache>(new FakePipelineCache());
+
+            Assert.ThrowsAsync<OperationCanceledException>(async () =>
+                await pipeline.Invoke(context, new CancellationToken(true)));
+            Assert.DoesNotThrowAsync(async () =>
+                await pipeline.Invoke(context, new CancellationToken(false)));
         }
 
         [Test]
@@ -290,6 +336,7 @@
             protected override Task Terminate(IDispatchContext context)
             {
                 context.PrintInstanceWithRunSpecificIfPossible(instance, writer);
+                token.ThrowIfCancellationRequested();
                 return Task.CompletedTask;
             }
 
