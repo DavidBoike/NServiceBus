@@ -12,15 +12,17 @@
         {
             var behaviorTypes = typeof(IBehavior).Assembly.GetTypes()
                 .Where(type => typeof(IBehavior).IsAssignableFrom(type))
-                .Where(type => type.IsClass && !type.IsAbstract && type.BaseType != null && type.BaseType != typeof(object))
                 .ToArray();
 
             foreach (var type in behaviorTypes)
             {
-                if (type.BaseType.IsGenericType)
+                for (var baseType = type.BaseType; baseType != null && baseType != typeof(object); baseType = baseType.BaseType)
                 {
-                    var genericType = type.BaseType.GetGenericTypeDefinition();
-                    Assert.IsFalse(genericType == typeof(Behavior<>), $"For performance reasons, built-in behavior `{type}` is not allowed to inherit from abstract class Behavior<T>. Implement IBehavior<Tin, TOut> directly, using the same context type for both TIn and TOut.");
+                    if (baseType.IsGenericType)
+                    {
+                        var genericType = baseType.GetGenericTypeDefinition();
+                        Assert.IsFalse(genericType == typeof(Behavior<>), $"For performance reasons, built-in behavior `{type}` is not allowed to inherit from abstract class Behavior<T>. Implement IBehavior<Tin, TOut> directly, using the same context type for both TIn and TOut.");
+                    }
                 }
             }
         }

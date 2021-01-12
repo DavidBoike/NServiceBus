@@ -1741,13 +1741,13 @@ namespace NServiceBus.Pipeline
         public abstract System.Threading.Tasks.Task Invoke(TContext context, System.Func<System.Threading.Tasks.Task> next, System.Threading.CancellationToken token);
         public System.Threading.Tasks.Task Invoke(TContext context, System.Func<TContext, System.Threading.CancellationToken, System.Threading.Tasks.Task> next, System.Threading.CancellationToken token) { }
     }
-    public abstract class ForkConnector<TFromContext, TForkContext> : NServiceBus.Pipeline.Behavior<TFromContext>, NServiceBus.Pipeline.IBehavior, NServiceBus.Pipeline.IBehavior<TFromContext, TFromContext>
+    public abstract class ForkConnector<TFromContext, TForkContext> : NServiceBus.Pipeline.IBehavior, NServiceBus.Pipeline.IBehavior<TFromContext, TFromContext>
         where TFromContext : NServiceBus.Pipeline.IBehaviorContext
         where TForkContext : NServiceBus.Pipeline.IBehaviorContext
     {
         protected ForkConnector() { }
-        public override sealed System.Threading.Tasks.Task Invoke(TFromContext context, System.Func<System.Threading.Tasks.Task> next, System.Threading.CancellationToken token) { }
-        public abstract System.Threading.Tasks.Task Invoke(TFromContext context, System.Func<System.Threading.Tasks.Task> next, System.Func<TForkContext, System.Threading.Tasks.Task> fork, System.Threading.CancellationToken token);
+        public System.Threading.Tasks.Task Invoke(TFromContext context, System.Func<TFromContext, System.Threading.CancellationToken, System.Threading.Tasks.Task> next, System.Threading.CancellationToken token) { }
+        public abstract System.Threading.Tasks.Task Invoke(TFromContext context, System.Func<TFromContext, System.Threading.CancellationToken, System.Threading.Tasks.Task> next, System.Func<TForkContext, System.Threading.CancellationToken, System.Threading.Tasks.Task> fork, System.Threading.CancellationToken token);
     }
     public interface IAuditContext : NServiceBus.Extensibility.IExtendable, NServiceBus.Pipeline.IBehaviorContext
     {
