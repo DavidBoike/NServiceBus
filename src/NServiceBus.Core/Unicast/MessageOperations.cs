@@ -2,6 +2,7 @@ namespace NServiceBus
 {
     using System;
     using System.Collections.Generic;
+    using System.Threading;
     using System.Threading.Tasks;
     using DeliveryConstraints;
     using MessageInterfaces;
@@ -17,11 +18,11 @@ namespace NServiceBus
         readonly IPipeline<IUnsubscribeContext> unsubscribePipeline;
 
         public MessageOperations(
-            IMessageMapper messageMapper, 
-            IPipeline<IOutgoingPublishContext> publishPipeline, 
-            IPipeline<IOutgoingSendContext> sendPipeline, 
-            IPipeline<IOutgoingReplyContext> replyPipeline, 
-            IPipeline<ISubscribeContext> subscribePipeline, 
+            IMessageMapper messageMapper,
+            IPipeline<IOutgoingPublishContext> publishPipeline,
+            IPipeline<IOutgoingSendContext> sendPipeline,
+            IPipeline<IOutgoingReplyContext> replyPipeline,
+            IPipeline<ISubscribeContext> subscribePipeline,
             IPipeline<IUnsubscribeContext> unsubscribePipeline)
         {
             this.messageMapper = messageMapper;
@@ -59,7 +60,8 @@ namespace NServiceBus
                 options.Context,
                 context);
 
-            return publishPipeline.Invoke(publishContext);
+            // TODO: Temporary use of CancellationToken.None
+            return publishPipeline.Invoke(publishContext, CancellationToken.None);
         }
 
         public Task Subscribe(IBehaviorContext context, Type eventType, SubscribeOptions options)
@@ -69,7 +71,8 @@ namespace NServiceBus
                 eventType,
                 options.Context);
 
-            return subscribePipeline.Invoke(subscribeContext);
+            // TODO: Temporary use of CancellationToken.None
+            return subscribePipeline.Invoke(subscribeContext, CancellationToken.None);
         }
 
         public Task Unsubscribe(IBehaviorContext context, Type eventType, UnsubscribeOptions options)
@@ -79,7 +82,8 @@ namespace NServiceBus
                 eventType,
                 options.Context);
 
-            return unsubscribePipeline.Invoke(unsubscribeContext);
+            // TODO: Temporary use of CancellationToken.None
+            return unsubscribePipeline.Invoke(unsubscribeContext, CancellationToken.None);
         }
 
         public Task Send<T>(IBehaviorContext context, Action<T> messageConstructor, SendOptions options)
@@ -116,7 +120,8 @@ namespace NServiceBus
                 outgoingContext.AddDeliveryConstraint(options.DelayedDeliveryConstraint);
             }
 
-            return sendPipeline.Invoke(outgoingContext);
+            // TODO: Temporary use of CancellationToken.None
+            return sendPipeline.Invoke(outgoingContext, CancellationToken.None);
         }
 
         public Task Reply(IBehaviorContext context, object message, ReplyOptions options)
@@ -146,7 +151,8 @@ namespace NServiceBus
                 options.Context,
                 context);
 
-            return replyPipeline.Invoke(outgoingContext);
+            // TODO: Temporary use of CancellationToken.None
+            return replyPipeline.Invoke(outgoingContext, CancellationToken.None);
         }
     }
 }
