@@ -1,6 +1,7 @@
 ﻿namespace NServiceBus.Pipeline
 {
     using System;
+    using System.Threading;
     using System.Threading.Tasks;
 
     /// <summary>
@@ -20,7 +21,8 @@
         /// </summary>
         /// <param name="context">Context object.</param>
         /// <param name="next">Ignored since there by definition is no next behavior to call.</param>
-        public sealed override Task Invoke(T context, Func<ITerminatingContext, Task> next)
+        /// <param name="token">A <see cref="CancellationToken"/> to observe while invoking.</param>
+        public sealed override Task Invoke(T context, Func<ITerminatingContext, CancellationToken, Task> next, CancellationToken token)
         {
             Guard.AgainstNull(nameof(next), next);
 

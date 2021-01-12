@@ -2,6 +2,7 @@
 {
     using System;
     using System.Linq;
+    using System.Threading;
     using System.Threading.Tasks;
     using DelayedDelivery;
     using DeliveryConstraints;
@@ -9,7 +10,7 @@
 
     class ThrowIfCannotDeferMessageBehavior : IBehavior<IRoutingContext, IRoutingContext>
     {
-        public Task Invoke(IRoutingContext context, Func<IRoutingContext, Task> next)
+        public Task Invoke(IRoutingContext context, Func<IRoutingContext, CancellationToken, Task> next, CancellationToken token)
         {
             var deliveryConstraints = context.Extensions.GetDeliveryConstraints();
 
@@ -18,7 +19,7 @@
                 throw new InvalidOperationException("Cannot delay delivery of messages when there is no infrastructure support for delayed messages.");
             }
 
-            return next(context);
+            return next(context, token);
         }
     }
 }
