@@ -11,6 +11,7 @@
 
     static class TaskReturning
     {
+        // TODO: enrich detection of obsolete methods to include those which have a return type or parameters of obsolete types
         private static readonly List<MethodInfo> methods = typeof(IMessage).Assembly.GetTypes()
             .Where(type => !type.IsObsolete())
             .SelectMany(type => type.GetMethods(BindingFlags.Static | BindingFlags.Instance | BindingFlags.DeclaredOnly | BindingFlags.Public | BindingFlags.NonPublic)
@@ -22,7 +23,6 @@
 #pragma warning disable IDE0001 // Simplify Names
         private static readonly List<MethodInfo> noTokenPolicy = methods
             .Where(method =>
-                (!method.IsVisible() && method.IsOn(type => (type.FullName ?? type.Name).Contains("UnitOfWork"))) ||
                 method.IsOn(typeof(NServiceBus.IHandleMessages<>)) ||
                 method.IsOn(typeof(NServiceBus.IHandleTimeouts<>)) ||
                 method.IsOn(typeof(NServiceBus.IMessageProcessingContext)) ||
@@ -42,7 +42,7 @@
 
         private static readonly List<MethodInfo> mandatoryTokenPolicy = methods
             .Where(method =>
-                (!method.IsVisible() && !method.IsOn(type => (type.FullName ?? type.Name).Contains("UnitOfWork"))) ||
+                !method.IsVisible() ||
                 method.IsOn(typeof(NServiceBus.DataBus.IDataBus)) ||
                 method.IsOn(typeof(NServiceBus.Features.FeatureStartupTask)) ||
                 method.IsOn(typeof(NServiceBus.Installation.INeedToInstallSomething)) ||
@@ -194,6 +194,7 @@
             Assert.IsEmpty(violators);
         }
 
+        // TODO: check generic arg types for obsoletion (recursively)
         static bool IsObsolete(this Type type) =>
             type.GetCustomAttributes<ObsoleteAttribute>(true).Any() || (type.DeclaringType != null && type.DeclaringType.IsObsolete());
 
